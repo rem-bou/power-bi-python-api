@@ -27,6 +27,7 @@ class Datasets:
         self.dataset_users = False
         self.user = {}
         self.dataset_storage_mode_updated = True
+        self.dataset_refreshing = False
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-dataset
     # Get specific dataset from My Workspace
