@@ -18,6 +18,7 @@ class Users:
         
         response = requests.post(url, headers = self.client.json_headers)
         if able_wait_time:
+            logging.info("Waiting 2 minutes for user access to refresh properly.")
             sleep(120)
         
         if response.status_code == self.client.http_ok_code:
