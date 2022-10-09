@@ -28,6 +28,8 @@ class Datasets:
         self.user = {}
         self.dataset_storage_mode_updated = True
         self.dataset_refreshing = False
+        self.dataset_is_owned = False
+        self.dataset_binded = False
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-dataset
     # Get specific dataset from My Workspace
@@ -67,19 +69,39 @@ class Datasets:
             self.client.force_raise_http_error(response)
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/bind-to-gateway-in-group
-    def bind_to_gateway(self, workspace_name: str, dataset_name: str) -> List:
+    def bind_to_gateway(self, workspace_name: str, dataset_name: str, binding_type: str = 'default', geteway_name: str = None) -> bool:
         self.client.check_token_expiration()
         self.workspaces.get_workspace_id(workspace_name)
         self.get_dataset_in_workspace_id(dataset_name, workspace_name)
+        self.dataset_binded = False
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset +"/Default.BindToGateway"
+        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] +"/Default.BindToGateway"
         
-        response = requests.post(url, headers = self.client.json_headers)
+        if binding_type in ['default']:
+            gateway_json = self.get_dataset_gateways(dataset_name, workspace_name)
+            if len(gateway_json)>0:
+                # gateway_id = gateway_json[0]['id']
+                for gateway in gateway_json:
+                    if gateway['name'] == geteway_name or not geteway_name:
+                        gateway_id = gateway['id']
+                        break
+                payload = {
+                    "gatewayObjectId": gateway_id
+                }
+                response = requests.post(url, json = payload, headers = self.client.json_headers)
+            else:
+                logging.error(F"Failed to bind dataset {dataset_name} in workspace {workspace_name} to gateway due to no gateway available.")
+                return self.dataset_binded
+        else :
+            logging.error(F"Failed to bind dataset {dataset_name} in workspace {workspace_name} to gateway due to missing parameters.")
+            return self.dataset_binded
+            # response = requests.post(url, headers = self.client.json_headers)
 
         if response.status_code == self.client.http_ok_code:
             logging.info(F"Successfully binding dataset {dataset_name} in workspace {workspace_name} to gateway.")
-            self.dataset_json = json.dumps(response.json(), indent=10)
-            return self.dataset_json
+            # self.dataset_json = json.dumps(response.json(), indent=10)
+            self.dataset_binded = True
+            return self.dataset_binded
         else:
             logging.error(f"Failed to bind dataset {dataset_name} in workspace {workspace_name} to gateway.")
             self.client.force_raise_http_error(response)
@@ -184,7 +206,7 @@ class Datasets:
             self.client.force_raise_http_error(response)
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/take-over-in-group
-    def take_dataset_owner(self, dataset_name: str, workspace_name: str) -> str:
+    def take_dataset_owner(self, dataset_name: str, workspace_name: str) -> bool:
         self.client.check_token_expiration()
         self.get_dataset_in_workspace_id(dataset_name, workspace_name)
 
@@ -194,8 +216,8 @@ class Datasets:
 
         if response.status_code == self.client.http_ok_code:
             logging.info(f"Successfully took over dataset {dataset_name} in workspace {workspace_name}.")
-            self.dataset_json = json.dumps(response.json(), indent=10)
-            return self.dataset_json
+            self.dataset_is_owned = True
+            return self.dataset_is_owned
         else:
             logging.error(f"Failed to take over dataset {dataset_name} in workspace {workspace_name}.")
             self.client.force_raise_http_error(response)
