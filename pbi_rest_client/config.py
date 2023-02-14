@@ -110,3 +110,35 @@ class BaseConfig(object):
     MULTIPART_HEADERS = {
             "Content-Type": "multipart/form-data"
         }
+
+    # Required to retain session bearer token when LOG_WITH_PERSONAL_ACCOUNT = True 
+    # to avoid re-autentication
+    # CONFIG_FILE_NAME = 'config.conf'
+    # CONFIG_DIR_NAME = 'PBI_REST_API'
+    # if 'TMP' in os.environ:
+    #     CONFIG_FILE_PATH = os.path.join(os.environ['TMP'], CONFIG_DIR_NAME)
+    # elif 'XDG_CONFIG_HOME' in os.environ:
+    #     CONFIG_FILE_PATH = os.path.join(os.environ['XDG_CONFIG_HOME'], CONFIG_DIR_NAME)
+    # else:
+    #     CONFIG_FILE_PATH = os.path.join(os.environ['HOME'], '.config', CONFIG_DIR_NAME)
+    
+    
+    # Required to cache serialised_autnetication to avoid opening browser if possible
+    CRED_FILE_NAME = 'cred_cache.txt'
+    CRED_DIR_NAME = 'PBI_REST_API'
+    if 'TMP' in os.environ:
+        CRED_FILE_PATH = os.path.join(os.environ['TMP'], CRED_DIR_NAME)
+    elif 'XDG_CONFIG_HOME' in os.environ:
+        CRED_FILE_PATH = os.path.join(os.environ['XDG_CONFIG_HOME'], CRED_DIR_NAME)
+    else:
+        CRED_FILE_PATH = os.path.join(os.environ['HOME'], '.config', CRED_DIR_NAME)
+
+
+    # # Client ID of the App Registration / Service Principal
+    # POWER_BI_CLIENT_ID = os.getenv('POWER_BI_CLIENT_ID_DEV')
+    # # Client secret of the App Registration / Service Principal
+    # POWER_BI_CLIENT_SECRET = os.getenv('POWER_BI_CLIENT_SECRET_DEV')
+    # # Azure Tenant ID for authentication
+    # POWER_BI_TENANT_ID = os.getenv('POWER_BI_TENANT_ID_DEV')
+    # # Azure AD Login Authority URL
+    # AUTHORITY = "https://login.microsoftonline.com/" + POWER_BI_TENANT_ID

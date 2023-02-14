@@ -1,15 +1,18 @@
 #!/usr/bin/env python
-
+import os
 import logging
 import requests
 
 from datetime import datetime, timedelta
 from msal import PublicClientApplication, ConfidentialClientApplication
 from .config import BaseConfig
-from azure.identity import InteractiveBrowserCredential
+from azure.identity import InteractiveBrowserCredential, AuthenticationRecord, TokenCachePersistenceOptions
 
 
 config = BaseConfig()
+
+DESERIALIZED_CRED_FILE_PATH = config.CRED_FILE_PATH
+DESERIALIZED_CRED_FILE = os.path.join(DESERIALIZED_CRED_FILE_PATH, config.CRED_FILE_NAME)
 
 class RestClient:
     def __init__(self):
@@ -35,10 +38,35 @@ class RestClient:
     def request_bearer_token(self) -> None:
         if self.app == None:
             if config.LOG_WITH_PERSONAL_ACCOUNT:
+                deserialized_record = None
+                
+                if not os.path.exists(DESERIALIZED_CRED_FILE_PATH):
+                    # create folder in temp folder to hold serialized_credential
+                    os.mkdir(DESERIALIZED_CRED_FILE_PATH)
+
+                logging.info('Check if deserialized record exist.')
+                if os.path.exists(DESERIALIZED_CRED_FILE):
+                    # read serialized authentication_record from local file
+                    with open(DESERIALIZED_CRED_FILE, "rt") as infile:
+                        cred_json = infile.read()
+                        deserialized_record = AuthenticationRecord.deserialize(cred_json)
+
                 logging.info('Authentication via browser using email address.')
 
                 # https://www.datalineo.com/post/power-bi-rest-api-with-python-part-iii-azure-identity
-                self.app = InteractiveBrowserCredential()
+                # self.app = InteractiveBrowserCredential()
+                
+                # https://github.com/Azure/azure-sdk-for-python/issues/23721#issuecomment-1083539872
+                cpo = TokenCachePersistenceOptions()
+                self.app = InteractiveBrowserCredential(cache_persistence_options=cpo, authentication_record=deserialized_record)
+
+                if not os.path.exists(DESERIALIZED_CRED_FILE):
+                    logging.info(f'Create deserialized record in {DESERIALIZED_CRED_FILE_PATH}.')
+                    # serialize authentication_record to local file
+                    record = self.app.authenticate()
+                    cred_json = record.serialize()
+                    with open(DESERIALIZED_CRED_FILE, "wt") as outfile:
+                        outfile.write(cred_json)
 
             elif config.AUTHENTICATION_MODE == 'ServiceAccount':
                 logging.info('Authentication mode set to: ' + config.AUTHENTICATION_MODE)
