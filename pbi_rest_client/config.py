@@ -8,7 +8,19 @@ class BaseConfig(object):
     
     # Log with email address using internet browser
     LOG_WITH_PERSONAL_ACCOUNT = True 
-    
+    # Store serailisation record on computer to avoid having to authenticate via email address at every run
+    DESERIALIZE_CREDENTIAL_CACHE = True
+    # Required to cache serialised_autnetication to avoid opening browser if possible
+    CRED_FILE_NAME = 'cred_cache.txt'
+    CRED_DIR_NAME = 'PBI_REST_API'
+    if 'TMP' in os.environ:
+        CRED_FILE_PATH = os.path.join(os.environ['TMP'], CRED_DIR_NAME)
+    elif 'XDG_CONFIG_HOME' in os.environ:
+        CRED_FILE_PATH = os.path.join(os.environ['XDG_CONFIG_HOME'], CRED_DIR_NAME)
+    else:
+        CRED_FILE_PATH = os.path.join(os.environ['HOME'], '.config', CRED_DIR_NAME)
+
+    #Login via Service Account or Service Principal
     if auth_mode and not LOG_WITH_PERSONAL_ACCOUNT:
         AUTHENTICATION_MODE = 'ServiceAccount'
         SERVICE_ACCOUNT_USERNAME = os.getenv('SERVICE_ACCOUNT_USERNAME')
@@ -123,15 +135,7 @@ class BaseConfig(object):
     #     CONFIG_FILE_PATH = os.path.join(os.environ['HOME'], '.config', CONFIG_DIR_NAME)
     
     
-    # Required to cache serialised_autnetication to avoid opening browser if possible
-    CRED_FILE_NAME = 'cred_cache.txt'
-    CRED_DIR_NAME = 'PBI_REST_API'
-    if 'TMP' in os.environ:
-        CRED_FILE_PATH = os.path.join(os.environ['TMP'], CRED_DIR_NAME)
-    elif 'XDG_CONFIG_HOME' in os.environ:
-        CRED_FILE_PATH = os.path.join(os.environ['XDG_CONFIG_HOME'], CRED_DIR_NAME)
-    else:
-        CRED_FILE_PATH = os.path.join(os.environ['HOME'], '.config', CRED_DIR_NAME)
+    
 
 
     # # Client ID of the App Registration / Service Principal

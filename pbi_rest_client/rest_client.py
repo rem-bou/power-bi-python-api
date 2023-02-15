@@ -38,35 +38,41 @@ class RestClient:
     def request_bearer_token(self) -> None:
         if self.app == None:
             if config.LOG_WITH_PERSONAL_ACCOUNT:
-                deserialized_record = None
                 
-                if not os.path.exists(DESERIALIZED_CRED_FILE_PATH):
-                    # create folder in temp folder to hold serialized_credential
-                    os.mkdir(DESERIALIZED_CRED_FILE_PATH)
+                if config.DESERIALIZE_CREDENTIAL_CACHE:
+                    # Only if using deserialisation record for authentication
+                    deserialized_record = None
+                    if not os.path.exists(DESERIALIZED_CRED_FILE_PATH):
+                        # create folder in temp folder to hold serialized_credential
+                        os.mkdir(DESERIALIZED_CRED_FILE_PATH)
 
-                logging.info('Check if deserialized record exist.')
-                if os.path.exists(DESERIALIZED_CRED_FILE):
-                    # read serialized authentication_record from local file
-                    with open(DESERIALIZED_CRED_FILE, "rt") as infile:
-                        cred_json = infile.read()
-                        deserialized_record = AuthenticationRecord.deserialize(cred_json)
+                    logging.info('Check if deserialized record exist.')
+                    if os.path.exists(DESERIALIZED_CRED_FILE):
+                        # read serialized authentication_record from local file
+                        with open(DESERIALIZED_CRED_FILE, "rt") as infile:
+                            cred_json = infile.read()
+                            deserialized_record = AuthenticationRecord.deserialize(cred_json)
 
-                logging.info('Authentication via browser using email address.')
+                    logging.info('Authentication using cached information via browser using email address.')
 
-                # https://www.datalineo.com/post/power-bi-rest-api-with-python-part-iii-azure-identity
-                # self.app = InteractiveBrowserCredential()
-                
-                # https://github.com/Azure/azure-sdk-for-python/issues/23721#issuecomment-1083539872
-                cpo = TokenCachePersistenceOptions()
-                self.app = InteractiveBrowserCredential(cache_persistence_options=cpo, authentication_record=deserialized_record)
+                    # https://www.datalineo.com/post/power-bi-rest-api-with-python-part-iii-azure-identity
+                    # self.app = InteractiveBrowserCredential()
+                    
+                    # https://github.com/Azure/azure-sdk-for-python/issues/23721#issuecomment-1083539872
+                    cpo = TokenCachePersistenceOptions()
+                    self.app = InteractiveBrowserCredential(cache_persistence_options=cpo, authentication_record=deserialized_record)
 
-                if not os.path.exists(DESERIALIZED_CRED_FILE):
-                    logging.info(f'Create deserialized record in {DESERIALIZED_CRED_FILE_PATH}.')
-                    # serialize authentication_record to local file
-                    record = self.app.authenticate()
-                    cred_json = record.serialize()
-                    with open(DESERIALIZED_CRED_FILE, "wt") as outfile:
-                        outfile.write(cred_json)
+                    if not os.path.exists(DESERIALIZED_CRED_FILE):
+                        logging.info(f'Create deserialized record in {DESERIALIZED_CRED_FILE_PATH}.')
+                        # serialize authentication_record to local file
+                        record = self.app.authenticate()
+                        cred_json = record.serialize()
+                        with open(DESERIALIZED_CRED_FILE, "wt") as outfile:
+                            outfile.write(cred_json)
+                else:
+                    logging.info('Authentication via browser using email address.')
+                    # https://www.datalineo.com/post/power-bi-rest-api-with-python-part-iii-azure-identity
+                    self.app = InteractiveBrowserCredential()
 
             elif config.AUTHENTICATION_MODE == 'ServiceAccount':
                 logging.info('Authentication mode set to: ' + config.AUTHENTICATION_MODE)
