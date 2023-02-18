@@ -62,6 +62,12 @@ def refresh_print(refreshes, show_error: bool = False):
 workspace_name = ''
 dataset_name = ''
 
+######################################################
+# get dataset refresh schedule
+######################################################
+
+# refresh_schedule = datasets.get_dataset_refresh_schedule(workspace_name = workspace_name, dataset_name =  dataset_name)
+# print(refresh_schedule)
 
 ######################################################
 # cancel or start dataset refresh 
@@ -70,8 +76,6 @@ dataset_name = ''
 # datasets.cancel_dataset_refresh(workspace_name, dataset_name)
 
 # datasets.refresh_dataset(workspace_name, dataset_name, 'Full')
-
-
 
 ######################################################
 # Dataset Details
@@ -82,6 +86,7 @@ dataset_name = ''
 
 ######################################################
 # Dataset Refresh History
+# if currently refreshing loop every 30s to get refresh status
 ######################################################
 
 refresh_status = 'Unknown'
