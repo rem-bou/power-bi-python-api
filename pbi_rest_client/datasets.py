@@ -122,7 +122,25 @@ class Datasets:
         else:
             logging.error("Failed to retrieve datasets.")
             self.client.force_raise_http_error(response)
+    
+    # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-dataset-in-group
+    def get_dataset_in_workspace(self, workspace_name: str, dataset_name: str) -> List:
+        self.client.check_token_expiration()
+        self.workspaces.get_workspace_id(workspace_name)
+        self.get_dataset_in_workspace_id(dataset_name, workspace_name)
 
+        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name]
+        
+        response = requests.get(url, headers = self.client.json_headers)
+
+        if response.status_code == self.client.http_ok_code:
+            logging.info(f"Successfully retrieved dataset {dataset_name} in workspace {workspace_name}.")
+            self.datasets = response.json()
+            return self.datasets
+        else:
+            logging.error(f"Failed to retrieved dataset {dataset_name} in workspace {workspace_name}.")
+            self.client.force_raise_http_error(response)
+    
     # Get Dataset id from dataset_name in My Workspace
     def get_dataset_id(self, dataset_name: str) -> str:
         self.client.check_token_expiration()
