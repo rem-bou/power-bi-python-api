@@ -9,6 +9,7 @@ from .workspaces import Workspaces
 
 class Datasets:
     def __init__(self, client):
+        self.classKeyword = 'datasets'
         self.client = client
         self.workspaces = Workspaces(client)
         self.dataset = {}
@@ -33,49 +34,57 @@ class Datasets:
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-dataset
     # Get specific dataset from My Workspace
-    def get_dataset(self, dataset_id: str) -> str:
-        self.client.check_token_expiration()
+    # def get_dataset(self, dataset_id: str) -> str:
+    #     self.client.check_token_expiration()
 
-        url = self.client.base_url + "datasets/" + dataset_id
+    #     url = self.client.base_url + "datasets/" + dataset_id
         
-        response = requests.get(url, headers = self.client.json_headers)
+    #     response = requests.get(url, headers = self.client.json_headers)
 
-        if response.status_code == self.client.http_ok_code:
-            if response.json()["@odata.count"] <= 0:
-                logging.info("Dataset does not exist or user does not have permissions.")
-                return None
-            elif response.json()["@odata.count"] == 1:
-                logging.info("Successfully retrieved dataset.")
-                return response.json()
-        else:
-            logging.error("Failed to retrieve dataset.")
-            self.client.force_raise_http_error(response)
+    #     if response.status_code == self.client.http_ok_code:
+    #         if response.json()["@odata.count"] <= 0:
+    #             logging.info("Dataset does not exist or user does not have permissions.")
+    #             return None
+    #         elif response.json()["@odata.count"] == 1:
+    #             logging.info("Successfully retrieved dataset.")
+    #             return response.json()
+    #     else:
+    #         logging.error("Failed to retrieve dataset.")
+    #         self.client.force_raise_http_error(response)
     
-    # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-datasets
-    # Get all Datasets from My Workspace
-    def get_datasets(self) -> List:
-        self.client.check_token_expiration()
+    # # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-datasets
+    # # Get all Datasets from My Workspace
+    # def get_datasets(self) -> List:
+    #     self.client.check_token_expiration()
 
-        url = self.client.base_url + "datasets"
+    #     url = self.client.base_url + "datasets"
         
-        response = requests.get(url, headers = self.client.json_headers)
+    #     response = requests.get(url, headers = self.client.json_headers)
 
-        if response.status_code == self.client.http_ok_code:
-            logging.info("Successfully retrieved datasets from My workspace.")
-            self.datasets = response.json()["value"]
-            return self.datasets
-        else:
-            logging.error("Failed to retrieve datasets My workspace.")
-            self.client.force_raise_http_error(response)
+    #     if response.status_code == self.client.http_ok_code:
+    #         logging.info("Successfully retrieved datasets from My workspace.")
+    #         self.datasets = response.json()["value"]
+    #         return self.datasets
+    #     else:
+    #         logging.error("Failed to retrieve datasets My workspace.")
+    #         self.client.force_raise_http_error(response)
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/bind-to-gateway-in-group
     def bind_to_gateway(self, workspace_name: str, dataset_name: str, binding_type: str = 'default', geteway_name: str = None) -> bool:
         self.client.check_token_expiration()
-        self.workspaces.get_workspace_id(workspace_name)
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
-        self.dataset_binded = False
+        # self.workspaces.get_workspace_id(workspace_name)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] +"/Default.BindToGateway"
+        url_extension = ''
+        if workspace_name:
+            self.workspaces.get_workspace_id(workspace_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+            
+        self.get_dataset_id(workspace_name, dataset_name)
+        self.dataset_binded = False
+        
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name] +"/Default.BindToGateway"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] +"/Default.BindToGateway"
+        
         
         if binding_type in ['default']:
             gateway_json = self.get_dataset_gateways(workspace_name, dataset_name)
@@ -90,13 +99,16 @@ class Datasets:
                 }
                 response = requests.post(url, json = payload, headers = self.client.json_headers)
             else:
+                if not workspace_name: workspace_name = 'My Workspace'
                 logging.error(F"Failed to bind dataset {dataset_name} in workspace {workspace_name} to gateway due to no gateway available.")
                 return self.dataset_binded
         else :
+            if not workspace_name: workspace_name = 'My Workspace'
             logging.error(F"Failed to bind dataset {dataset_name} in workspace {workspace_name} to gateway due to missing parameters.")
             return self.dataset_binded
             # response = requests.post(url, headers = self.client.json_headers)
-
+        
+        if not workspace_name: workspace_name = 'My Workspace'
         if response.status_code == self.client.http_ok_code:
             logging.info(F"Successfully binding dataset {dataset_name} in workspace {workspace_name} to gateway.")
             # self.dataset_json = json.dumps(response.json(), indent=10)
@@ -107,14 +119,21 @@ class Datasets:
             self.client.force_raise_http_error(response)
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-datasets-in-group
-    def get_datasets_in_workspace(self, workspace_name: str) -> List:
+    def get_datasets(self, workspace_name: str) -> List:
         self.client.check_token_expiration()
-        self.workspaces.get_workspace_id(workspace_name)
-
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets"
+        # self.workspaces.get_workspace_id(workspace_name)
+        
+        url_extension = ''
+        if workspace_name:
+            self.workspaces.get_workspace_id(workspace_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+        
+        url = self.client.base_url + url_extension + self.classKeyword
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets"
         
         response = requests.get(url, headers = self.client.json_headers)
 
+        if not workspace_name: workspace_name = 'My Workspace' 
         if response.status_code == self.client.http_ok_code:
             logging.info("Successfully retrieved datasets.")
             self.datasets = response.json()["value"]
@@ -124,15 +143,23 @@ class Datasets:
             self.client.force_raise_http_error(response)
     
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-dataset-in-group
-    def get_dataset_in_workspace(self, workspace_name: str, dataset_name: str) -> List:
+    def get_dataset(self, workspace_name: str, dataset_name: str) -> List:
         self.client.check_token_expiration()
-        self.workspaces.get_workspace_id(workspace_name)
-        self.get_dataset_in_workspace_id(dataset_name, workspace_name)
+        # self.workspaces.get_workspace_id(workspace_name)
+        # self.get_dataset_in_workspace_id(dataset_name, workspace_name)
+        url_extension = ''
+        if workspace_name:
+            self.workspaces.get_workspace_id(workspace_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+          
+        self.get_dataset_id(workspace_name, dataset_name)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name]
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name] 
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name]
         
         response = requests.get(url, headers = self.client.json_headers)
 
+        if not workspace_name: workspace_name = 'My Workspace' 
         if response.status_code == self.client.http_ok_code:
             logging.info(f"Successfully retrieved dataset {dataset_name} in workspace {workspace_name}.")
             self.datasets = response.json()
@@ -141,27 +168,29 @@ class Datasets:
             logging.error(f"Failed to retrieved dataset {dataset_name} in workspace {workspace_name}.")
             self.client.force_raise_http_error(response)
     
-    # Get Dataset id from dataset_name in My Workspace
-    def get_dataset_id(self, dataset_name: str) -> str:
-        self.client.check_token_expiration()
-        self.get_datasets()
-        dataset_missing = True
+    # # Get Dataset id from dataset_name in My Workspace
+    # def get_dataset_id(self, dataset_name: str) -> str:
+    #     self.client.check_token_expiration()
+    #     self.get_datasets(None)
+    #     dataset_missing = True
 
-        for item in self.datasets:
-            if item['name'] == dataset_name:
-                logging.info(f"Found dataset with name {dataset_name} and dataset id {item['id']} in My Workspace.")
-                self.dataset = {dataset_name: item['id']}
-                dataset_missing = False
-                return self.dataset
-        if dataset_missing:
-            logging.warning(f"Unable to find dataset with name: {dataset_name} in My Workspace'")
+    #     for item in self.datasets:
+    #         if item['name'] == dataset_name:
+    #             logging.info(f"Found dataset with name {dataset_name} and dataset id {item['id']} in My Workspace.")
+    #             self.dataset = {dataset_name: item['id']}
+    #             dataset_missing = False
+    #             return self.dataset
+    #     if dataset_missing:
+    #         logging.warning(f"Unable to find dataset with name: {dataset_name} in My Workspace'")
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-dataset-in-group
-    def get_dataset_in_workspace_id(self, workspace_name: str, dataset_name: str) -> str:
+    def get_dataset_id(self, workspace_name: str, dataset_name: str) -> str:
         self.client.check_token_expiration()
-        self.get_datasets_in_workspace(workspace_name)
-        dataset_missing = True
+        self.get_datasets(workspace_name)
 
+        dataset_missing = True
+        
+        if not workspace_name: workspace_name = 'My Workspace' 
         for item in self.datasets:
             if item['name'] == dataset_name:
                 logging.info(f"Found dataset with name {dataset_name} and dataset id {item['id']} in workspace '{workspace_name}'.")
@@ -173,31 +202,37 @@ class Datasets:
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-parameters
     # Get all Datasets from My Workspace
-    def get_dataset_parameters(self, dataset_name: str) -> str:
-        self.client.check_token_expiration()
-        self.get_dataset_id(dataset_name)
+    # def get_dataset_parameters(self, dataset_name: str) -> str:
+    #     self.client.check_token_expiration()
+    #     self.get_dataset_id(dataset_name)
 
-        url = self.client.base_url + "datasets/" + self.dataset[dataset_name] + "/parameters"
+    #     url = self.client.base_url + "datasets/" + self.dataset[dataset_name] + "/parameters"
         
-        response = requests.get(url, headers = self.client.json_headers)
+    #     response = requests.get(url, headers = self.client.json_headers)
 
-        if response.status_code == self.client.http_ok_code:
-            logging.info("Successfully retrieved workspaces.")
-            self.dataset_parameters = response.json()
-            return self.dataset_parameters
-        else:
-            logging.error("Failed to retrieve workspaces.")
-            self.client.force_raise_http_error(response)
+    #     if response.status_code == self.client.http_ok_code:
+    #         logging.info("Successfully retrieved workspaces.")
+    #         self.dataset_parameters = response.json()
+    #         return self.dataset_parameters
+    #     else:
+    #         logging.error("Failed to retrieve workspaces.")
+    #         self.client.force_raise_http_error(response)
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-parameters-in-group
-    def get_dataset_in_group_parameters(self, workspace_name: str, dataset_name: str) -> str:
+    def get_dataset_parameters(self, workspace_name: str, dataset_name: str) -> str:
         self.client.check_token_expiration()
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
-
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/parameters"
+        self.get_dataset_id(workspace_name, dataset_name)
+        
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/'
+        
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name]  + "/parameters"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/parameters"
         
         response = requests.get(url, headers = self.client.json_headers)
 
+        if not workspace_name: workspace_name = 'My Workspace'
         if response.status_code == self.client.http_ok_code:
             logging.info(f"Successfully retrieved parameters from dataset {dataset_name} in workspace {workspace_name}.")
             self.dataset_parameters = response.content
@@ -209,12 +244,18 @@ class Datasets:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-datasources-in-group
     def get_datasources(self, workspace_name: str, dataset_name: str) -> str:
         self.client.check_token_expiration()
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
+        self.get_dataset_id(workspace_name, dataset_name)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/datasources"
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name]  + "/datasources"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/datasources"
         
         response = requests.get(url, headers = self.client.json_headers)
-
+        
+        if not workspace_name: workspace_name = 'My Workspace'
         if response.status_code == self.client.http_ok_code:
             logging.info(f"Successfully retrieved datasources from dataset {dataset_name} in workspace {workspace_name}.")
             self.dataset_datasources = response.json()["value"]
@@ -226,12 +267,18 @@ class Datasets:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/take-over-in-group
     def take_dataset_owner(self, workspace_name: str, dataset_name: str) -> bool:
         self.client.check_token_expiration()
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
+        self.get_dataset_id(workspace_name, dataset_name)
+        
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/Default.TakeOver"
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name]  + "/Default.TakeOver"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/Default.TakeOver"
         
         response = requests.post(url, headers = self.client.json_headers)
 
+        if not workspace_name: workspace_name = 'My Workspace'
         if response.status_code == self.client.http_ok_code:
             logging.info(f"Successfully took over dataset {dataset_name} in workspace {workspace_name}.")
             self.dataset_is_owned = True
@@ -243,9 +290,14 @@ class Datasets:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/refresh-dataset-in-group
     def refresh_dataset(self, workspace_name: str, dataset_name: str, refresh_type: str = None) -> str:
         self.client.check_token_expiration()
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
+        self.get_dataset_id(workspace_name, dataset_name)
+        
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/refreshes"
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name]  + "/refreshes"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/refreshes"
         
         not_refreshable = False
         for item in self.datasets:
@@ -253,6 +305,7 @@ class Datasets:
                 not_refreshable = True
                 break        
         
+        if not workspace_name: workspace_name = 'My Workspace'
         if not_refreshable:
             logging.warning(f"Failed to refresh dataset {dataset_name} in workspace {workspace_name} because it is not refreshable.")
             return False
@@ -280,12 +333,18 @@ class Datasets:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-refresh-history-in-group
     def get_dataset_refresh_history(self, workspace_name: str, dataset_name: str, topN: int = None) -> str:
         self.client.check_token_expiration()
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
+        self.get_dataset_id(workspace_name, dataset_name)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/refreshes"
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name]  + "/refreshes"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/refreshes"
         if topN: url = url + f'?$top={topN}'
         response = requests.get(url, headers = self.client.json_headers)
 
+        if not workspace_name: workspace_name = 'My Workspace'
         if response.status_code == self.client.http_ok_code:
             logging.info(f"Successfully retrieved refresh history from dataset {dataset_name} in workspace {workspace_name}.")
             self.dataset_refreshes = response.json()["value"]
@@ -294,11 +353,12 @@ class Datasets:
             logging.error(f"Failed to retrieve refresh history from dataset {dataset_name} in workspace {workspace_name}.")
             self.client.force_raise_http_error(response)
 
-    def get_refresh_history_in_dataset_id(self, workspace_name: str, dataset_name: str, refresh_name: str) -> str:
+    def get_dataset_refresh_history_in_id(self, workspace_name: str, dataset_name: str, refresh_name: str) -> str:
         self.client.check_token_expiration()
         self.get_dataset_refresh_history(workspace_name, dataset_name)
         refresh_missing = True
 
+        if not workspace_name: workspace_name = 'My Workspace'
         for item in self.dataset_refreshes:
             if item['requestId'] == refresh_name:
                 logging.info(f"Found refresh {refresh_name} for dataset {dataset_name} in workspace {workspace_name}.")
@@ -311,12 +371,18 @@ class Datasets:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-refresh-execution-details-in-group
     def get_dataset_refresh_details(self, workspace_name: str, dataset_name: str, refresh_name: str) -> str:
         self.client.check_token_expiration()
-        self.get_refresh_history_in_dataset_id( workspace_name, dataset_name, refresh_name)
+        self.get_dataset_refresh_history_in_id( workspace_name, dataset_name, refresh_name)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/refreshes/" + self.dataset_refresh[refresh_name]
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name]  + "/refreshes" + self.dataset_refresh[refresh_name]
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/refreshes/" + self.dataset_refresh[refresh_name]
 
         response = requests.get(url, headers = self.client.json_headers)
 
+        if not workspace_name: workspace_name = 'My Workspace'
         if response.status_code == self.client.http_ok_code or response.status_code == self.client.http_accepted_code:
             logging.info(f"Successfully retrieved details for refresh {refresh_name} from dataset {dataset_name} in workspace {workspace_name}.")
             self.dataset_refresh_details = response.json()
@@ -328,12 +394,18 @@ class Datasets:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-refresh-schedule-in-group
     def get_dataset_refresh_schedule(self, workspace_name: str, dataset_name: str) -> str:
         self.client.check_token_expiration()
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
+        self.get_dataset_id(workspace_name, dataset_name)
+        
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/refreshSchedule"
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name] + "/refreshSchedule"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/refreshSchedule"
 
         response = requests.get(url, headers = self.client.json_headers)
 
+        if not workspace_name: workspace_name = 'My Workspace'
         if response.status_code == self.client.http_ok_code:
             logging.info(f"Successfully retrieved refresh schedule from dataset {dataset_name} in workspace {workspace_name}.")
             self.dataset_refresh_schedule = response.json()
@@ -346,10 +418,15 @@ class Datasets:
     def cancel_dataset_refresh(self, workspace_name: str, dataset_name: str) -> bool:
         self.client.check_token_expiration()
         self.get_dataset_refresh_history(workspace_name, dataset_name)
+        
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
 
         refresh_missing =True
         self.dataset_refresh_cancelled = False
 
+        if not workspace_name: workspace_name = 'My Workspace'
         for refresh in self.dataset_refreshes:
             if refresh['status'] == 'Unknown' and refresh['refreshType'] == 'ViaEnhancedApi':
                 refresh_name = refresh['requestId']
@@ -359,7 +436,8 @@ class Datasets:
             logging.warning(f"Unable to find active refresh for dataset with name {dataset_name} in workspace {workspace_name}.")
             return self.dataset_refresh_cancelled
         
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/refreshes/" + refresh_name
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name] + "/refreshes/" + refresh_name
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/refreshes/" + refresh_name
         
         response = requests.delete(url, headers = self.client.json_headers)
 
@@ -374,14 +452,19 @@ class Datasets:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/delete-dataset-in-group
     def delete_dataset(self, workspace_name: str, dataset_name: str) -> bool:
         self.client.check_token_expiration()
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
+        self.get_dataset_id(workspace_name, dataset_name)
 
-        self.dataset_deleted = False
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name]
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name]
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name]
 
         response = requests.delete(url, headers = self.client.json_headers)
         
+        if not workspace_name: workspace_name = 'My Workspace'
+        self.dataset_deleted = False
         if response.status_code == self.client.http_ok_code:
             logging.info(f"Successfully deleted dataset {dataset_name} in workspace {workspace_name}.")
             self.dataset_deleted = True
@@ -393,12 +476,18 @@ class Datasets:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/discover-gateways-in-group
     def get_dataset_gateways(self, workspace_name: str, dataset_name: str) -> str:
         self.client.check_token_expiration()
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
+        self.get_dataset_id(workspace_name, dataset_name)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/Default.DiscoverGateways"
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name] + "/Default.DiscoverGateways"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/Default.DiscoverGateways"
         
         response = requests.get(url, headers = self.client.json_headers)
 
+        if not workspace_name: workspace_name = 'My Workspace'
         if response.status_code == self.client.http_ok_code:
             logging.info(f"Successfully retrieved list of gateways for dataset {dataset_name} in workspace {workspace_name}.")
             self.dataset_gateways = response.json()["value"]
@@ -410,12 +499,18 @@ class Datasets:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-dataset-users-in-group
     def get_dataset_users(self, workspace_name: str, dataset_name: str) -> str:
         self.client.check_token_expiration()
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
+        self.get_dataset_id(workspace_name, dataset_name)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/users"
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name] + "/users"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/users"
         
         response = requests.get(url, headers = self.client.json_headers)
 
+        if not workspace_name: workspace_name = 'My Workspace'
         if response.status_code == self.client.http_ok_code:
             logging.info(f"Successfully retrieved list of users for dataset {dataset_name} in workspace {workspace_name}.")
             self.dataset_users = response.json()["value"]
@@ -425,12 +520,13 @@ class Datasets:
             self.client.force_raise_http_error(response)
 
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-dataset-users-in-group
-    def get_user_in_dataset_id(self, workspace_name: str, dataset_name: str, user_name: str) -> str:
+    def get_dataset_user_id(self, workspace_name: str, dataset_name: str, user_name: str) -> str:
         self.client.check_token_expiration()
         self.get_dataset_users(workspace_name, dataset_name)
         user_missing = True
         self.user = ''
 
+        if not workspace_name: workspace_name = 'My Workspace'
         for item in self.dataset_users:
             if item['identifier'] == user_name:
                 logging.info(f"Found user {user_name} for dataset {dataset_name} in workspace '{workspace_name}'.")
@@ -445,14 +541,20 @@ class Datasets:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/put-dataset-user-in-group
     def update_dataset_user_permission(self, workspace_name: str, dataset_name: str, user_name: str, access_type: str, principal_type: str) -> bool:
         self.client.check_token_expiration()
-        self.get_dataset_in_workspace_id(workspace_name, dataset_name)
-        self.get_user_in_dataset_id(workspace_name, dataset_name, user_name)
+        self.get_dataset_id(workspace_name, dataset_name)
+        self.get_dataset_user_id(workspace_name, dataset_name, user_name)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/users"
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name] + "/users"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name] + "/users"
         
         self.dataset_permission_updated = False
         error_parameter = ''
-        
+        if not workspace_name: workspace_name = 'My Workspace'
+
         if principal_type not in ['App', 'Group', 'None', 'User']:
             error_parameter = 'principal type'
         elif access_type not in ['Read', 'ReadExplore', 'ReadReshare', 'ReadReshareExplore']:
@@ -484,11 +586,17 @@ class Datasets:
     def get_dataflows_for_datasets_in_workspace(self, workspace_name: str) -> str:
         self.client.check_token_expiration()
         self.workspaces.get_workspace_id(workspace_name)
+        
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/upstreamDataflows"
+        url = self.client.base_url + url_extension + self.classKeyword + '/'  + "upstreamDataflows"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/upstreamDataflows"
         
         response = requests.get(url, headers = self.client.json_headers)
 
+        if not workspace_name: workspace_name = 'My Workspace'
         if response.status_code == self.client.http_ok_code:
             if response.json()["@odata.count"] <= 0:
                 logging.info(f"No dataflow linked to dataset in workspace {workspace_name}.")
@@ -504,13 +612,18 @@ class Datasets:
     def update_dataset_storage_mode(self, workspace_name: str, dataset_name: str, storage_mode: str) ->bool:
         self.client.check_token_expiration()
         self.take_dataset_owner(workspace_name, dataset_name)
-    
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name]
+        url_extension = ''
+        if workspace_name:
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.dataset[dataset_name]
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/datasets/" + self.dataset[dataset_name]
 
         payload = {
                 "targetStorageMode": storage_mode
             }
         
+        if not workspace_name: workspace_name = 'My Workspace'
         # abf = small datasets & PremiumFiles is large dataset
         if storage_mode not in ['abf', 'PremiumFiles']:
             logging.error(f'Issue with storage mode {storage_mode}, not in accepeted parameter for dataset {dataset_name} in workspace {workspace_name}.')

@@ -36,7 +36,7 @@ dataset_name = ''
 #################################################################################
 # Checks users in datasets
 #################################################################################
-all_datasets = datasets.get_datasets_in_workspace(workspace_name)
+all_datasets = datasets.get_datasets(workspace_name)
 
 for dataset in all_datasets:
     if dataset['name'] == dataset_name:
@@ -57,7 +57,7 @@ workspace_found = False
 for workspace in groups:
     HasUsageMetricsReport = False
     workspace_name = workspace['name']
-    all_datasets = datasets.get_datasets_in_workspace(workspace_name)
+    all_datasets = datasets.get_datasets(workspace_name)
     for dataset in all_datasets:
         dataset_name = dataset['name']
         name_list.append(f'{dataset_name} in {workspace_name}')
@@ -66,7 +66,7 @@ for workspace in groups:
             for i in range(1,5):
                 time.sleep(2)
                 datasets.take_dataset_owner(dataset_name, workspace_name)
-                dataset_check = datasets.get_dataset_in_workspace(workspace_name, dataset_name)
+                dataset_check = datasets.get_dataset(workspace_name, dataset_name)
                 # print(dataset_check)
                 if dataset_check['configuredBy'].lower() == current_user:
                     print(f'Succefull ownership taken over for {dataset_name} in {workspace_name}.')

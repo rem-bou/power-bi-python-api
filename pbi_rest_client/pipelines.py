@@ -249,12 +249,12 @@ class Pipelines:
                     report_list.append({"sourceId": f"{item['id']}"})
                     dataset_list.append({"sourceId": f"{item['datasetId']}"})
             elif not deploy_reports and deploy_datasets:
-                self.datasets.get_datasets_in_workspace(workspace_name)
+                self.datasets.get_datasets(workspace_name)
                 for item in self.datasets.datasets:
                     dataset_list.append({"sourceId": f"{item['id']}"})
             else:
                 self.reports.get_reports(workspace_name)
-                self.datasets.get_datasets_in_workspace(workspace_name)
+                self.datasets.get_datasets(workspace_name)
                 for item in self.reports.reports:
                     report_list.append({"sourceId": f"{item['id']}"})
                 for item in self.datasets.datasets:

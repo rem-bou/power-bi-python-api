@@ -33,7 +33,7 @@ dataset_name = ''
 #################################################################################
 # Takes Ownership and bind data to datasource from getway
 #################################################################################
-datasets_list = datasets.get_datasets_in_workspace(workspace_name)
+datasets_list = datasets.get_datasets(workspace_name)
 
 for dataset in datasets_list:
     if dataset['name'] == dataset_name:
