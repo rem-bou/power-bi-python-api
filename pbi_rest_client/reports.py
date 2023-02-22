@@ -20,6 +20,7 @@ if utils_enable:
 
 class Reports:
     def __init__(self, client):
+        self.classKeyword = "reports"
         self.client = client
         self.workspaces = Workspaces(client)
         self.datasets = Datasets(client)
@@ -28,13 +29,19 @@ class Reports:
         self.report_datasources = None
         self.report_pages = None
         self.transfer_ownership = False
-    
+
     # https://docs.microsoft.com/en-us/rest/api/power-bi/reports/get-reports-in-group
     def get_reports(self, workspace_name: str) -> List:
         self.client.check_token_expiration()
-        self.workspaces.get_workspace_id(workspace_name)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports"
+        url_extension = ''
+        if workspace_name:
+            self.workspaces.get_workspace_id(workspace_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name]
+        else:
+            workspace_name = 'My Workspace' 
+        
+        url = self.client.base_url + url_extension + '/' + self.classKeyword
         
         response = requests.get(url, headers = self.client.json_headers)
 
@@ -68,12 +75,19 @@ class Reports:
             return logging.warning(f"Failed to export report {report_name} in workspace {workspace_name} due to issue with Azure credentials.")
 
         self.client.check_token_expiration()
-        self.get_report(workspace_name, report_name)
+
+        url_extension = ''
+        if workspace_name:
+            self.get_report(workspace_name, report_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+        else:
+            workspace_name = 'My Workspace'
 
         out_file = report_name + ".pbix"
         blob = utils.blob_client(out_file)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/Export"
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.report['id'] + "/Export"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/Export"
         
         response = requests.get(url, headers = self.client.json_headers, stream = True)
 
@@ -89,8 +103,8 @@ class Reports:
             logging.error("Failed to export report: " + report_name + " in workspace: " + workspace_name)
             self.client.force_raise_http_error(response)
 
-    # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-dataset-in-group
-    def get_report_in_workspace_id(self, workspace_name: str, report_name: str) -> str:
+    # https://docs.microsoft.com/en-us/rest/api/power-bi/datasets/get-report-in-group
+    def get_report_id(self, workspace_name: str, report_name: str) -> str:
         self.client.check_token_expiration()
         self.get_reports(workspace_name)
         report_missing = True
@@ -107,17 +121,25 @@ class Reports:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/reports/clone-report-in-group
     def clone_report(self, workspace_name: str, report_name: str, clone_report_name: str, target_workspace_name: str = None, target_dataset_name: str = None, target_dataset_workspace_name: str = None) -> bool:
         self.client.check_token_expiration()
-        self.get_report(workspace_name, report_name)
-
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/Clone"
+        # self.get_report(workspace_name, report_name)
+        
+        url_extension = ''
+        if workspace_name:
+            self.get_report(workspace_name, report_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/'
+        else:
+            workspace_name = 'My Workspace' 
+        
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.report['id'] + "/Clone"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/Clone"
 
         if not target_dataset_name:
             target_dataset_name = self.report['datasetId']
         elif target_dataset_workspace_name != None and target_dataset_name != None:
-            self.datasets.get_dataset_in_workspace_id(target_dataset_name, target_dataset_workspace_name)
+            self.datasets.get_dataset_id(target_dataset_name, target_dataset_workspace_name)
             target_dataset_name = self.datasets.dataset[target_dataset_name]
         elif target_dataset_name != None:
-            self.datasets.get_dataset_in_workspace_id(target_dataset_name, workspace_name)
+            self.datasets.get_dataset_id(target_dataset_name, workspace_name)
             target_dataset_name = self.datasets.dataset[target_dataset_name]
         
         if not target_workspace_name:
@@ -146,11 +168,18 @@ class Reports:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/reports/delete-report-in-group
     def delete_report(self, workspace_name: str, report_name: str) -> bool:
         self.client.check_token_expiration()
-        self.get_report_in_workspace_id(workspace_name, report_name)
+        # self.get_report_id(workspace_name, report_name)
 
         self.dataset_deleted = False
-
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report[report_name]
+        url_extension = ''
+        if workspace_name:
+            self.get_report_id(workspace_name, report_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/'
+        else:
+            workspace_name = 'My Workspace' 
+        
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.report[report_name]
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report[report_name]
 
         response = requests.delete(url, headers = self.client.json_headers)
         
@@ -165,9 +194,17 @@ class Reports:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group
     def get_datasources_for_paginated_report(self, workspace_name: str, report_name: str) -> List:
         self.client.check_token_expiration()
-        self.get_report(workspace_name, report_name)
-
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/datasources"
+        # self.get_report(workspace_name, report_name)
+        
+        url_extension = ''
+        if workspace_name:
+            self.get_report(workspace_name, report_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/'
+        else:
+            workspace_name = 'My Workspace' 
+        
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.report['id'] + "/datasources"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/datasources"
 
         if self.report['reportType'] != 'PaginatedReport':
             logging.warning(f"Failed to get datasources from report {report_name} because it not a pagniated report.")
@@ -186,9 +223,16 @@ class Reports:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/reports/get-pages-in-group
     def get_report_pages(self, workspace_name: str, report_name: str) -> List:
         self.client.check_token_expiration()
-        self.get_report_in_workspace_id(workspace_name, report_name)
-
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report[report_name] + "/pages"
+        # self.get_report_id(workspace_name, report_name)
+        url_extension = ''
+        if workspace_name:
+            self.get_report_id(workspace_name, report_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/'
+        else:
+            workspace_name = 'My Workspace' 
+        
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.report[report_name] + "/pages"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report[report_name] + "/pages"
 
         response = requests.get(url, headers = self.client.json_headers)
 
@@ -203,17 +247,25 @@ class Reports:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/reports/rebind-report-in-group
     def rebind_report(self, workspace_name: str, report_name: str, target_dataset_name: str = None, target_dataset_workspace_name: str = None) -> bool:
         self.client.check_token_expiration()
-        self.get_report(workspace_name, report_name)
-
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/Rebind"
+        # self.get_report(workspace_name, report_name)
+        
+        url_extension = ''
+        if workspace_name:
+            self.get_report(workspace_name, report_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+        else:
+            workspace_name = 'My Workspace'
+        
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.report['id'] + "/Rebind"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/Rebind"
 
         if not target_dataset_name:
             target_dataset_name = self.report['datasetId']
         elif target_dataset_workspace_name != None and target_dataset_name != None:
-            self.datasets.get_dataset_in_workspace_id(target_dataset_name, target_dataset_workspace_name)
+            self.datasets.get_dataset_id(target_dataset_name, target_dataset_workspace_name)
             target_dataset_name = self.datasets.dataset[target_dataset_name]
         elif target_dataset_name != None:
-            self.datasets.get_dataset_in_workspace_id(target_dataset_name, workspace_name)
+            self.datasets.get_dataset_id(target_dataset_name, workspace_name)
             target_dataset_name = self.datasets.dataset[target_dataset_name]
 
         payload = {
@@ -232,9 +284,17 @@ class Reports:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/reports/update-datasources-in-group
     def update_datasources_for_paginated_report(self, workspace_name: str, report_name: str, datasource_names: List, server_names: List, database_names: List) -> bool:
         self.client.check_token_expiration()
-        self.get_report(workspace_name, report_name)
+        # self.get_report(workspace_name, report_name)
 
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/Default.UpdateDatasources"
+        url_extension = ''
+        if workspace_name:
+            self.get_report(workspace_name, report_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+        else:
+            workspace_name = 'My Workspace'
+        
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.report['id'] + "/Default.UpdateDatasources"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/Default.UpdateDatasources"
 
         if self.report['reportType'] != 'PaginatedReport':
             logging.warning(f"Failed to get datasources from report {report_name} because it not a pagniated report.")
@@ -270,10 +330,18 @@ class Reports:
     # https://docs.microsoft.com/en-us/rest/api/power-bi/reports/take-over-in-group
     def become_owner_of_paginated_report_datasources(self, workspace_name: str, report_name: str) -> bool:
         self.client.check_token_expiration()
-        self.get_report(workspace_name, report_name)
+        # self.get_report(workspace_name, report_name)
         self.transfer_ownership = False
         
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/Default.TakeOver"
+        url_extension = ''
+        if workspace_name:
+            self.get_report(workspace_name, report_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+        else:
+            workspace_name = 'My Workspace'
+        
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.report['id'] + "/Default.TakeOver"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report['id'] + "/Default.TakeOver"
 
         if self.report['reportType'] != 'PaginatedReport':
             logging.warning(f"Failed to get datasources from report {report_name} because it not a pagniated report.")
@@ -293,13 +361,20 @@ class Reports:
     def update_report_content(self, workspace_name: str, report_name: str, source_workspace_name: str, source_report_name: str) -> bool:
         self.client.check_token_expiration()
         
-        self.get_report_in_workspace_id(source_workspace_name, source_report_name)
+        self.get_report_id(source_workspace_name, source_report_name)
         source_workspace_name_id = self.workspaces.workspace[workspace_name]
         source_report_name_id = self.report[source_report_name]
         
-        self.get_report_in_workspace_id(workspace_name, report_name)
-
-        url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report[report_name] + "/UpdateReportContent"
+        # self.get_report_id(workspace_name, report_name)
+        url_extension = ''
+        if workspace_name:
+            self.get_report_id(workspace_name, report_name)
+            url_extension = "groups/" + self.workspaces.workspace[workspace_name] + '/' 
+        else:
+            workspace_name = 'My Workspace'
+        
+        url = self.client.base_url + url_extension + self.classKeyword + '/' + self.report[report_name] + "/UpdateReportContent"
+        # url = self.client.base_url + "groups/" + self.workspaces.workspace[workspace_name] + "/reports/" + self.report[report_name] + "/UpdateReportContent"
 
         payload = {
                     "sourceReport": {
